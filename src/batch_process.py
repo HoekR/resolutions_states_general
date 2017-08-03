@@ -28,12 +28,12 @@ def batch_process(basedir='',
         
     extension = extension
 
-    dr = basedir+extension
+    dr = os.path.join(basedir, '%s' % extension, 'ocr')
     
     fls = [fl for fl in os.listdir(dr) if fl.find('html')]
     fls = [fl for fl in fls if fl.find('voorwerk') == -1]
     if debug == True:
-        print debug
+        print 'debug:',  debug
         fls = fls[:100]
     result = []
     
@@ -50,10 +50,27 @@ def batch_process(basedir='',
     return result
 
 
-def test(startdate='1 januari 1620', debug=True):
+def test(startdate='1 januari 1620', 
+         basedir='/Users/rikhoekstra/Downloads/rsg/ocr/', 
+         vol=1, 
+         debug=True):
+    """als debug waar is dan parst het programma maar 100 pags"""
+    import logging
+    basedir = basedir
+    fn = os.path.join(basedir,'rsgdiag.log')
+    logging.basicConfig(filename=fn, filemode='w', level=logging.INFO)
+    logger = logging.getLogger(__name__)
+    handler = logging.FileHandler(fn)
+    handler.setLevel(logging.INFO)
+    
     d = make_date(startdate)[1]
     rows = []
-    b = batch_process(basedir='/Users/rikhoekstra/Downloads/rsg/ocr/', extension='4', debug=debug, specific=None)  
+    
+    
+    b = batch_process(basedir=basedir, 
+                      extension=vol, 
+                      debug=debug, 
+                      specific=None)  
     for i in  b:
         for s in i.sessions:
             if s.date:
@@ -62,14 +79,15 @@ def test(startdate='1 januari 1620', debug=True):
                 date = d
             except AttributeError:
                 date = "01-01-1620" 
-            
+            logger.info(s.resolutions.keys())
             for r in s.resolutions.keys():
                 res = s.resolutions[r]
                 res.mknr()
-                row = [date, res.nr, 
-                res.get_resolution(sep=''), i.pagenr]
-                rows.append(row)
-    flout = '/Users/rikhoekstra/Downloads/rsg/ocr/vntest.csv'
+                if res.nr <> '0':
+                    row = [date, res.nr, 
+                    res.get_resolution(sep=' '), i.pagenr]
+                    rows.append(row)
+    flout = os.path.join(basedir, '%stest.csv' % vol)
     fout = open(flout, 'w')
     w = writer(fout)
     w.writerow(['date', 'resolutionnr', 'resolution', 'pagenr'])
@@ -82,3 +100,4 @@ if __name__ == '__main__':
                       extension='4', 
                       specific=75, 
                       debug=True)
+

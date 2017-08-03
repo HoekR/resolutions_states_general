@@ -10,7 +10,7 @@ import logging
 from dateparser import parse as dateparse
 from transitions import Machine
 from collections import Counter
-p1 = re.compile('\A\s*(\d+)\s*(januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)\s+(\d+)')
+p1 = re.compile('\A\s*([l\d]+)\s*(januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)\s+([l\d]+)')
 p2 = re.compile('(^\s*[0-9]+\.)(.*)')
 
 
@@ -49,7 +49,10 @@ class Resolution(object):
         self.footnote = False
         
     def get_resolution(self, sep='\n'):
-        result = sep.join(self.text)
+        if isinstance(self.text, str):
+            result = self.text
+        else:
+            result = sep.join(self.text)
         return result
     
     def mknr(self):
@@ -199,7 +202,7 @@ class ProcessingModel(object):
             return True
                    
     def divide_page_transition(self):        
-        self.parsedpage = [s for s in self.page.split('<br>') if s.strip() != '']
+        self.parsedpage = [s.strip() for s in self.page.split('<br>') if s.strip() != '']
 
     def pagenumber(self):
         pat1 = re.compile('[0-9]+')
@@ -311,47 +314,4 @@ def parse(fl,
     return model
     
     
-"""
-txt = "70.000 pond voor een zak stenen"""
-p2 = re.compile('(^\s*[0-9]+\.)(.*)')
-import re
-p2 = re.compile('(^\s*[0-9]+\.)(.*)')
-p2.search(txt)
-p2.search(txt).groups()
-p2 = re.compile('(^\s*[0-9]+\.)([\D]*)')
-p2.search(txt).groups()
-p2 = re.compile('(^\s*[0-9]+\.[\D]*)')
-p2.search(txt).groups()
-p2 = re.compile('(^\s*[0-9]+\.[\D]+)')
-p2.search(txt).groups()
-txt2 = "   334. Na behandeling van"""
-p2.search(txt2).groups()
-p2 = re.compile('(^\s*[0-9]+\.)([\D]+)')
-p2.search(txt2).groups()
-p2.search(txt).groups()
-txt3 = "334. Na behandeling van"""
-p2.search(txt3).groups()
-txt4 = "334.Na behandeling van"""
-p2.search(txt4).groups()
-p1 = re.compile('\A\s*(\d+)\s*(januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)\s+(\d+)')
-txt1 = "10 augustus 1619"
-p1.search(txt1)
-txt2 = "l0 augustus 1619"
-p1.search(txt2)
-ph = re.compile('\A[\sl]*(\d+)\s*(januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)\s+(\d+)')
-ph.search(txt2)
-ph.search(txt2).groups()
-ph = re.compile('\A\s*([l\d]+)\s*(januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)\s+(\d+)')
-ph.search(txt2).groups()
-ph = re.compile('\A\s*([l\d]+)\s*(januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)\s+(l\d+)')
-ph.search(txt2).groups()
-ph = re.compile('\A\s*([l\d]+)\s*(januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)\s+([l\d+])')
-ph = re.compile('\A\s*([l\d]+)\s*(januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)\s+([l\d]+)')
-ph.search(txt2).groups()
-txt3 = "l0 augustus 16l9"
-ph.search(txt2).groups()
-ph.search(txt3).groups()
-txt4 = "l0 augustus l6l9"
-ph.search(txt3).groups()
-ph.search(txt4).groups()
-"""
+

@@ -10,8 +10,8 @@ import logging
 from dateparser import parse as dateparse
 from transitions import Machine
 from collections import Counter
-p1 = re.compile('\A\s*([l\d]+)\s*(januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)\s+([l\d]+)')
-p2 = re.compile('(^\s*[0-9]+\.)(.*)')
+p1 = re.compile('(\w*)([l\d]*[l\d]+)\s*(januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)\s+([l\d]+)', re.I)
+p2 = re.compile("(((?P<roman>\w*[A-Za-z]))*\s*((?P<rnr>\d{1,4}\s*\.+)))(?P<resolutie>.*)")
 
 
 
@@ -44,6 +44,7 @@ class Resolution(object):
     """resolution model for RSG decisions"""
     def __init__(self, text=''):
         self.text = [text]
+        self.roman = ''
         self.nr = 0
         self.rawnr = ''
         self.footnote = False
@@ -52,22 +53,29 @@ class Resolution(object):
         if isinstance(self.text, str):
             result = self.text
         else:
-            result = sep.join(self.text)
+            result = sep.join(self.text or [])
         return result
     
-    def mknr(self):
-        pat = p2.search(self.get_resolution(sep=''))
+    def mknr(self, pattern=p2):
+        pat = pattern.search(self.get_resolution(sep=''))
 #        import pdb; pdb.set_trace()
         if pat:
             if pat.groups() and len(pat.groups()) >1:
                 try:
-                    nr = int(pat.groups()[0].strip()[:-1])
-                    self.nr = nr
-                except ValueError:
+                    romannr = pat.groupdict().get('roman').strip()
+                    self.roman = romannr
+                except (AttributeError, ValueError) :
                     pass
-                self.rawnr = pat.groups()[0]
+                try:
+                    nr = pat.groupdict().get('rnr').strip()
+                    if nr.find('.'):
+                        nr = nr[:nr.find('.')] # throw away all after the dot
+                    self.nr = int(nr)
+                except (ValueError, AttributeError):
+                    pass
+                self.rawnr = pat.groupdict().get('rnr')
 #                f = self.text.find(self.rawnr)
-                self.text = pat.groups()[1]
+                self.text = pat.groupdict().get('resolutie').strip()
         
     def __repr__(self):
         return self.get_resolution()
@@ -184,7 +192,7 @@ class ProcessingModel(object):
         """ % (self.pagenr, 
                len(self.sessions), 
                sum([len(s.resolutions) for s in self.sessions]))
-        print res
+        print (res)
     
     def page_state_transition(self):
         c = Counter(self.page)
@@ -282,10 +290,9 @@ def parse(fl,
     """parses file
     The transitions and states for the machine are defined above"""
     if log == True:
-        fn = os.path.join('/Users/rikhoekstra/Downloads/rsg/ocr/','rsg_parser.log')
+        fn = os.path.join('/Users/rikhoekstra/surfdrive/rsg/ocr/','rsg_parser.log')
         logging.basicConfig(filename=fn,filemode='w',level=logging.INFO)
-        from transitions import logger
-        logger.setLevel(logging.INFO)
+        logging.getLogger('transitions').setLevel(logging.INFO)
     page = fl.read()
     fl.close()
     

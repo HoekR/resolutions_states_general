@@ -5,9 +5,11 @@ Created on Mon May  1 17:09:26 2017
 @author: rikhoekstra
 """
 import os
-from unicodecsv import writer
+import re
+from csv import writer
 from transitioning_rsg_parser import parse, make_date
-
+p1 = re.compile("(((?P<roman>\w*[A-Za-z]))*\s*((?P<rnr>\d{1,4}\s*\.+)))(?P<resolutie>.*)", re.UNICODE)
+p2 = re.compile(r'(?P<rnr>\d{1,4}\s*\.?)(?P<resolutie>.*)', re.UNICODE) 
 
 def batch_process(basedir='', 
                   extension='4',
@@ -32,26 +34,29 @@ def batch_process(basedir='',
     
     fls = [fl for fl in os.listdir(dr) if fl.find('html')]
     fls = [fl for fl in fls if fl.find('voorwerk') == -1]
+    fls.sort()
     if debug == True:
-        print 'debug:',  debug
-        fls = fls[:100]
+        print ('debug:',  debug)
+        fls = fls[:25]
     result = []
     
     if debug==True and specific:
         fl = open(os.path.join(dr, fls[specific]))
-        print "processing %s" % fls[specific]
-#        import pdb; pdb.set_trace()
+        print ("processing %s" % fls[specific])
         result.append(parse(fl))
     else:
-        for fl in fls:
-            fl = open(os.path.join(dr, fl))
-            result.append(parse(fl))
+        for fn in fls:
+            fl = open(os.path.join(dr, fn), encoding='latin1')
+            try:
+                result.append(parse(fl))
+            except UnicodeDecodeError:
+                print ("skipping %s because of UNICODE ERRORS!!!" % fn )
 #    return fl
     return result
 
 
-def test(startdate='1 januari 1620', 
-         basedir='/Users/rikhoekstra/Downloads/rsg/ocr/', 
+def test(start_date='1 januari 1620', 
+         basedir='/Users/rikhoekstra/surfdrive/rsg/ocr/', 
          vol=1, 
          debug=True):
     """als debug waar is dan parst het programma maar 100 pags"""
@@ -63,41 +68,44 @@ def test(startdate='1 januari 1620',
     handler = logging.FileHandler(fn)
     handler.setLevel(logging.INFO)
     
-    d = make_date(startdate)[1]
+    d = make_date(start_date)[1]
     rows = []
     
     
     b = batch_process(basedir=basedir, 
                       extension=vol, 
                       debug=debug, 
-                      specific=None)  
+                      specific=None,
+                      logging=True)  
     for i in  b:
         for s in i.sessions:
             if s.date:
                 d = s.date
             try:
-                date = d
-            except AttributeError:
-                date = "01-01-1620" 
+                date = date = "{:%Y-%m-%d}".format(d)
+            except (AttributeError, ValueError, TypeError):
+                date = start_date
             logger.info(s.resolutions.keys())
             for r in s.resolutions.keys():
                 res = s.resolutions[r]
-                res.mknr()
-                if res.nr <> '0':
+                if vol == 1:
+                    pat = p1
+                else:
+                    pat == p2
+                res.mknr(pat)
+                if res.nr != '0':
                     row = [date, res.nr, 
-                    res.get_resolution(sep=' '), i.pagenr]
+                    res.get_resolution(sep=' '), i.pagenr, res.roman]
                     rows.append(row)
-    flout = os.path.join(basedir, '%stest.csv' % vol)
+#                    print(res)
+    flout = os.path.join(basedir, '%soutput.csv' % vol)
     fout = open(flout, 'w')
-    w = writer(fout)
-    w.writerow(['date', 'resolutionnr', 'resolution', 'pagenr'])
+    w = writer(fout, delimiter='\t')
+    w.writerow(['date', 'resolutionnr', 'resolution', 'pagenr', 'roman'])
     w.writerows(rows)
     fout.close()
-    return b
+    print ("file written to: %s" % flout)
 
 if __name__ == '__main__':
-    b = batch_process(basedir='/Users/rikhoekstra/Downloads/rsg/ocr/', 
-                      extension='4', 
-                      specific=75, 
-                      debug=True)
+    test(start_date='1 januari 1620', basedir='/Users/rikhoekstra/surfdrive/rsg/ocr', vol=1, debug=True)
 

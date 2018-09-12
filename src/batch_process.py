@@ -8,8 +8,8 @@ import os
 import re
 from csv import writer
 from transitioning_rsg_parser import parse, make_date
-p1 = re.compile("(((?P<roman>\w*[A-Za-z]))*\s*((?P<rnr>\d{1,4}\s*\.+)))(?P<resolutie>.*)", re.UNICODE)
-p2 = re.compile(r'(?P<rnr>\d{1,4}\s*\.?)(?P<resolutie>.*)', re.UNICODE) 
+p1 = re.compile("(((?P<roman>\w*[A-Za-z]))*\s*((?P<rnr>\d{1,4}[\s\.]+)))(?P<resolutie>.*)", re.UNICODE)
+p2 = re.compile(r'(?P<rnr>\d{1,4}[\s\.]*)(?P<resolutie>.*)', re.UNICODE) 
 
 def batch_process(basedir='', 
                   extension='4',
@@ -32,23 +32,27 @@ def batch_process(basedir='',
 
     dr = os.path.join(basedir, '%s' % extension, 'ocr')
     
-    fls = [fl for fl in os.listdir(dr) if fl.find('html')]
-    fls = [fl for fl in fls if fl.find('voorwerk') == -1]
+    fls = [fl for fl in os.listdir(dr) if fl.find('voorwerk') == -1]
+    fls = [fl for fl in fls if fl.find('html') > -1]
     fls.sort()
     if debug == True:
         print ('debug:',  debug)
         fls = fls[:25]
     result = []
     
+    if extension == 1:
+        pat = p1
+    else:
+        pat = p2
     if debug==True and specific:
         fl = open(os.path.join(dr, fls[specific]))
         print ("processing %s" % fls[specific])
-        result.append(parse(fl))
+        result.append(parse(fl, pat))
     else:
         for fn in fls:
             fl = open(os.path.join(dr, fn), encoding='latin1')
             try:
-                result.append(parse(fl))
+                result.append(parse(fl, pat))
             except UnicodeDecodeError:
                 print ("skipping %s because of UNICODE ERRORS!!!" % fn )
 #    return fl
@@ -59,7 +63,7 @@ def test(start_date='1 januari 1620',
          basedir='/Users/rikhoekstra/surfdrive/rsg/ocr/', 
          vol=1, 
          debug=True):
-    """als debug waar is dan parst het programma maar 100 pags"""
+    """als debug waar is dan parst het programma maar 25 pags"""
     import logging
     basedir = basedir
     fn = os.path.join(basedir,'rsgdiag.log')
@@ -70,7 +74,10 @@ def test(start_date='1 januari 1620',
     
     d = make_date(start_date)[1]
     rows = []
-    
+    if vol == 1:
+        pat = p1
+    else:
+        pat = p2
     
     b = batch_process(basedir=basedir, 
                       extension=vol, 
@@ -88,10 +95,6 @@ def test(start_date='1 januari 1620',
             logger.info(s.resolutions.keys())
             for r in s.resolutions.keys():
                 res = s.resolutions[r]
-                if vol == 1:
-                    pat = p1
-                else:
-                    pat == p2
                 res.mknr(pat)
                 if res.nr != '0':
                     row = [date, res.nr, 
@@ -107,5 +110,5 @@ def test(start_date='1 januari 1620',
     print ("file written to: %s" % flout)
 
 if __name__ == '__main__':
-    test(start_date='1 januari 1620', basedir='/Users/rikhoekstra/surfdrive/rsg/ocr', vol=1, debug=True)
+    b = batch_process(basedir='/Users/rikhoekstra/surfdrive/rsg/ocr', extension=7, specific=22, debug=True)
 

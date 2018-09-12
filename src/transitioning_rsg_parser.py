@@ -11,7 +11,7 @@ from dateparser import parse as dateparse
 from transitions import Machine
 from collections import Counter
 p1 = re.compile('(\w*)([l\d]*[l\d]+)\s*(januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)\s+([l\d]+)', re.I)
-p2 = re.compile("(((?P<roman>\w*[A-Za-z]))*\s*((?P<rnr>\d{1,4}\s*\.+)))(?P<resolutie>.*)")
+p2 = re.compile("(((?P<roman>\w*[A-Za-z]))*\s*((?P<rnr>\d{1,4}[\s\.]+)))(?P<resolutie>.*)")
 
 
 
@@ -210,7 +210,7 @@ class ProcessingModel(object):
             return True
                    
     def divide_page_transition(self):        
-        self.parsedpage = [s.strip() for s in self.page.split('<br>') if s.strip() != '']
+        self.parsedpage = [s.strip() for s in re.split('<br\/?>\\n*', self.page) if s.strip() != '']
 
     def pagenumber(self):
         pat1 = re.compile('[0-9]+')
@@ -284,6 +284,7 @@ def make_date(text):
     return (text, date)
     
 def parse(fl,
+          pat,
           states=states,
           transitions=transitions, 
           log = True):
@@ -296,7 +297,7 @@ def parse(fl,
     page = fl.read()
     fl.close()
     
-    model = ProcessingModel(page)
+    model = ProcessingModel(page, p2=pat)
     machine = Machine(model=model,
                       transitions=transitions,
                       initial='start',)
